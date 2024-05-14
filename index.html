@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
+  <style>
+    ::highlight(search-results-assumenda) {
+      background-color: #f06;
+      color: white;
+    }
+
+    ::highlight(search-results-non) {
+      background-color: yellow;
+      color: black;
+    }
+
+    ::highlight(search-results-olo) {
+      background-color: rgba(255, 185, 71, 0.7);
+      color: white;
+    }
+
+    ::highlight(search-results-lor) {
+      background-color: rgba(180, 255, 0, 0.7);
+      color: black;
+    }
+  </style>
+</head>
+
+<body>
+  <article>
+    <p>Maxime debitis hic, delectus perspiciatis laborum molestiae labore,
+      deleniti, quam consequatur iure veniam alias voluptas nisi quo. Dolorem
+      eaque alias, quo vel quas repudiandae architecto deserunt quidem, sapiente
+      laudantium nulla.
+    </p>
+    <p>
+      Maiores odit molestias, necessitatibus doloremque dolor illum reprehenderit
+      provident nostrum laboriosam iste, tempore perferendis! Ab porro neque esse
+      voluptas libero necessitatibus fugiat, ex, minus atque deserunt veniam
+      molestiae tempora? Vitae.
+    </p>
+    <p>
+      Dolorum facilis voluptate eaque eius similique ducimus dignissimos assumenda
+      quos architecto. Doloremque deleniti non exercitationem rerum quam alias
+      harum, nisi obcaecati corporis temporibus vero sapiente voluptatum est
+      quibusdam id ipsa.
+    </p>
+  </article>
+  <div id="renderTime" style="font-size: larger; color:red"></div>
+  <script>
+    const startTime = performance.now()
+
+    const queryElement = document.getElementById("query");
+    const articleElement = document.querySelector("article");
+
+    // Find all text nodes in the article. We'll search within
+    // these text nodes.
+    const treeWalker = document.createTreeWalker(articleElement, NodeFilter.SHOW_TEXT);
+    const allTextNodes = [];
+    let currentNode = treeWalker.nextNode();
+    while (currentNode) {
+      allTextNodes.push(currentNode);
+      currentNode = treeWalker.nextNode();
+    }
+
+    const targetWords = ['assumenda', 'olo', 'lor']
+    let matchedRects = []
+
+    function makeHighlightByArr(targetWords,) {
+      matchedRects = []
+      if (!CSS.highlights) {
+        articleElement.textContent = "浏览器暂不支持CSS高亮API";
+        return;
+      }
+      CSS.highlights.clear();
+
+      targetWords.forEach(str => {
+        if (typeof str !== "string") return;
+        // find matches.
+        const ranges = allTextNodes
+          .map((el) => {
+            return { el, text: el.textContent.toLowerCase() };
+          })
+          .map(({ text, el }) => {
+            const indices = [];
+            let startPos = 0;
+            while (startPos < text.length) {
+              const index = text.indexOf(str, startPos);
+              if (index === -1) break;
+              indices.push(index);
+              startPos = index + str.length;
+            }
+            return indices.map((index) => {
+              const range = new Range();
+              range.setStart(el, index);
+              range.setEnd(el, index + str.length);
+              const bounding = range.getBoundingClientRect()
+              const rect = { text: range.toString(), x: bounding.x, y: bounding.y, width: bounding.width, height: bounding.height }
+              matchedRects.push(rect)
+              return range;
+            });
+          });
+        const searchResultsHighlight = new Highlight(...ranges.flat());
+        CSS.highlights.set(`search-results-${str}`, searchResultsHighlight);
+        const duration = performance.now() - startTime
+        document.getElementById("renderTime").textContent = `渲染时间 ${duration} ms`
+      })
+    }
+
+    makeHighlightByArr(targetWords)
+
+    let currentNodeIndex = -1
+    window.addEventListener("mousemove", _.throttle(e => {
+      if (currentNodeIndex !== -1) {
+        let rect = matchedRects[currentNodeIndex]
+        // 如果鼠标仍在上次的矩形里，直接return，减少循环次数
+        if (mouseInArea(e, rect)) return
+      }
+      for (let i = 0; i < matchedRects.length; i++) {
+        let rect = matchedRects[i]
+        if (mouseInArea(e, rect)) {
+          currentNodeIndex = i
+          showTooltip(rect)
+          break
+        } else {
+          hideTooltip()
+          currentNodeIndex = -1
+        }
+      }
+    }, 100))
+
+    let toolTipElement = null
+    /**
+     * @param {HTMLElement} toolTipElement
+     * @param {Event} event
+     */
+    function showTooltip(rect) {
+      if (!toolTipElement) toolTipElement = document.createElement('div')
+      document.body.style.cursor = "pointer"
+      toolTipElement.textContent = rect.text
+      toolTipElement.style = `
+      display: block;
+      position: absolute;
+      left: ${rect.x}px;
+      top: ${rect.y - 30}px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background-color: black;
+      opacity: 0.8;
+      color: white`
+      document.body.appendChild(toolTipElement)
+    }
+
+    function hideTooltip() {
+      if (toolTipElement) toolTipElement.style.display = "none"
+      document.body.style.cursor = "auto"
+    }
+
+    function mouseInArea(e, rect) {
+      return e.pageX > rect.x && e.pageX < rect.x + rect.width && e.pageY > rect.y && e.pageY < rect.y + rect.height
+    }
+  </script>
+</body>
+
+</html>
