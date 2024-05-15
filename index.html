@@ -7,6 +7,17 @@
   <title>Document</title>
   <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
   <style>
+    .highlight-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      border-width: 5px;
+      margin-left: -5px;
+      border-style: solid;
+      border-color: #000 transparent transparent transparent;
+    }
+
     ::highlight(search-results-assumenda) {
       background-color: #f06;
       color: white;
@@ -66,10 +77,10 @@
       currentNode = treeWalker.nextNode();
     }
 
-    const targetWords = ['assumenda', 'olo', 'lor']
+    const keywords = ['assumenda', 'olo', 'lor']
     let matchedRects = []
 
-    function makeHighlightByArr(targetWords,) {
+    function makeHighlightByArr(keywordsArr) {
       matchedRects = []
       if (!CSS.highlights) {
         articleElement.textContent = "浏览器暂不支持CSS高亮API";
@@ -77,7 +88,7 @@
       }
       CSS.highlights.clear();
 
-      targetWords.forEach(str => {
+      keywordsArr.forEach(str => {
         if (typeof str !== "string") return;
         // find matches.
         const ranges = allTextNodes
@@ -110,7 +121,7 @@
       })
     }
 
-    makeHighlightByArr(targetWords)
+    makeHighlightByArr(keywords)
 
     let currentNodeIndex = -1
     window.addEventListener("mousemove", _.throttle(e => {
@@ -141,16 +152,16 @@
       if (!toolTipElement) toolTipElement = document.createElement('div')
       document.body.style.cursor = "pointer"
       toolTipElement.textContent = rect.text
+      toolTipElement.classList.add('highlight-tooltip')
       toolTipElement.style = `
       display: block;
       position: absolute;
       left: ${rect.x}px;
-      top: ${rect.y - 30}px;
-      padding: 2px 6px;
+      top: ${rect.y - rect.height - 6}px;
+      padding: 0 6px;
       border-radius: 4px;
       background-color: black;
-      opacity: 0.8;
-      color: white`
+      color: white;`
       document.body.appendChild(toolTipElement)
     }
 
